@@ -7,7 +7,8 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Part, :app do
   subject { described_class.new(fs: fs, inflector: inflector, generator: generator) }
 
   let(:out) { StringIO.new }
-  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out) }
+  let(:input) { StringIO.new }
+  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out, input: input) }
   let(:inflector) { Dry::Inflector.new }
   let(:generator) { Hanami::CLI::Generators::App::Part.new(fs: fs, inflector: inflector) }
   let(:app) { Hanami.app.namespace }
@@ -66,11 +67,25 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Part, :app do
           end
         end
 
-        it "raises error" do
-          within_application_directory do
-            expect {
+        context "with positive answer for overwrite question" do
+          let(:input) { StringIO.new("y\n")}
+
+          it "overwrites file" do
+            within_application_directory do
               subject.call(name: "user")
-            }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+            end
+
+            expect(output).to include("Updated app/views/parts/user.rb")
+          end
+        end
+
+        context "with negative answer for overwrite question" do
+          it "raises error" do
+            within_application_directory do
+              expect {
+                subject.call(name: "user")
+              }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+            end
           end
         end
       end

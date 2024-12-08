@@ -9,16 +9,19 @@ module Hanami
     class Files < Dry::Files
       # @since 2.0.0
       # @api private
-      def initialize(out: $stdout, **args)
+      def initialize(out: $stdout, input: $stdin, **args)
         super(**args)
         @out = out
+        @input = input
       end
 
       # @api private
       def create(path, *content)
-        raise FileAlreadyExistsError.new(path) if exist?(path)
-
-        write(path, *content)
+        if exist?(path)
+          handle_file_conflict(path, *content)
+        else
+          write(path, *content)
+        end
       end
 
       # @since 2.0.0
@@ -55,7 +58,10 @@ module Hanami
 
       private
 
-      attr_reader :out
+      POSITIVE_ANSWERS = ["yes", "y"].freeze
+      private_constant :POSITIVE_ANSWERS
+
+      attr_reader :out, :input
 
       # Removes .keep files in any directories leading up to the given path.
       #
@@ -89,6 +95,18 @@ module Hanami
 
       def _path(path)
         path + ::File::SEPARATOR
+      end
+
+      def handle_file_conflict(path, *content)
+        out.puts "The file `#{path}` already exists. Would you like to overwrite it? [y/N]"
+        response = input.gets&.chomp&.downcase
+
+        case response
+        when *POSITIVE_ANSWERS
+          write(path, *content)
+        else
+          raise FileAlreadyExistsError.new(path)
+        end
       end
     end
   end

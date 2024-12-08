@@ -4,7 +4,8 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Operation, :app do
   subject { described_class.new(fs: fs, inflector: inflector, out: out) }
 
   let(:out) { StringIO.new }
-  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out) }
+  let(:input) { StringIO.new }
+  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out, input: input) }
   let(:inflector) { Dry::Inflector.new }
   let(:app) { Hanami.app.namespace }
 
@@ -84,10 +85,22 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Operation, :app do
         fs.write("app/admin/books/add.rb", "existing content")
       end
 
-      it "raises error" do
-        expect {
+      context "with positive answer for overwrite question" do
+        let(:input) { StringIO.new("y\n")}
+
+        it "overwrites file" do
           subject.call(name: "admin.books.add")
-        }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+
+          expect(output).to include("Updated app/admin/books/add.rb")
+        end
+      end
+
+      context "with negative answer for overwrite question" do
+        it "raises error" do
+          expect {
+            subject.call(name: "admin.books.add")
+          }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+        end
       end
     end
   end

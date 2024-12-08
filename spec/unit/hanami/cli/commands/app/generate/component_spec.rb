@@ -7,7 +7,8 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Component, :app do
   subject { described_class.new(fs: fs, inflector: inflector, out: out) }
 
   let(:out) { StringIO.new }
-  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out) }
+  let(:input) { StringIO.new }
+  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out, input: input) }
   let(:inflector) { Dry::Inflector.new }
   let(:app) { Hanami.app.namespace }
   let(:underscored_app) { inflector.underscore(app) }
@@ -43,10 +44,22 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Component, :app do
           fs.write("app/operations/send_welcome_email.rb", "existing content")
         end
 
-        it "raises error" do
-          expect {
+        context "with positive answer for overwrite question" do
+          let(:input) { StringIO.new("Y\n")}
+
+          it "overwrites file" do
             subject.call(name: "operations.send_welcome_email")
-          }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+
+            expect(output).to include("Updated app/operations/send_welcome_email.rb")
+          end
+        end
+
+        context "with negative answer for overwrite question" do
+          it "raises error" do
+            expect {
+              subject.call(name: "operations.send_welcome_email")
+            }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+          end
         end
       end
     end
@@ -79,10 +92,22 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Component, :app do
           fs.write("app/operations/user/mailing/send_welcome_email.rb", "existing content")
         end
 
-        it "raises error" do
-          expect {
+        context "with positive answer for overwrite question" do
+          let(:input) { StringIO.new("Y\n")}
+
+          it "overwrites file" do
             subject.call(name: "operations.user.mailing.send_welcome_email")
-          }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+
+            expect(output).to include("Updated app/operations/user/mailing/send_welcome_email.rb")
+          end
+        end
+
+        context "with negative answer for overwrite question" do
+          it "raises error" do
+            expect {
+              subject.call(name: "operations.user.mailing.send_welcome_email")
+            }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+          end
         end
       end
     end
@@ -114,10 +139,22 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Component, :app do
           fs.write("slices/main/renderers/welcome_email.rb", "existing content")
         end
 
-        it "raises error" do
-          expect {
+        context "with positive answer for overwrite question" do
+          let(:input) { StringIO.new("Y\n")}
+
+          it "overwrites file" do
             subject.call(name: "renderers.welcome_email", slice: "main")
-          }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+
+            expect(output).to include("Updated slices/main/renderers/welcome_email.rb")
+          end
+        end
+
+        context "with negative answer for overwrite question" do
+          it "raises error" do
+            expect {
+              subject.call(name: "renderers.welcome_email", slice: "main")
+            }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+          end
         end
       end
     end
@@ -151,10 +188,22 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Component, :app do
           fs.write("slices/main/renderers/user/mailing/welcome_email.rb", "existing content")
         end
 
-        it "raises error" do
-          expect {
+        context "with positive answer for overwrite question" do
+          let(:input) { StringIO.new("Y\n")}
+
+          it "overwrites file" do
             subject.call(name: "renderers.user.mailing.welcome_email", slice: "main")
-          }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+
+            expect(output).to include("Updated slices/main/renderers/user/mailing/welcome_email.rb")
+          end
+        end
+
+        context "with negative answer for overwrite question" do
+          it "raises error" do
+            expect {
+              subject.call(name: "renderers.user.mailing.welcome_email", slice: "main")
+            }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+          end
         end
       end
     end

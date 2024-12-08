@@ -7,7 +7,8 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Action, :app do
   subject { described_class.new(fs: fs, inflector: inflector, generator: generator) }
 
   let(:out) { StringIO.new }
-  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out) }
+  let(:input) { StringIO.new }
+  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out, input: input) }
   let(:inflector) { Dry::Inflector.new }
   let(:generator) { Hanami::CLI::Generators::App::Action.new(fs: fs, inflector: inflector) }
   let(:app) { Hanami.app.namespace }
@@ -41,12 +42,26 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Action, :app do
         end
       end
 
-      it "raises error" do
-        expect {
+      context "with positive answer for overwrite question" do
+        let(:input) { StringIO.new("YES\n")}
+
+        it "overwrites file" do
           within_application_directory do
             generate_action
+
+            expect(output).to include("Updated app/actions/#{controller}/#{action}.rb")
           end
-        }.to raise_error(Hanami::CLI::FileAlreadyExistsError, "Cannot overwrite existing file: `app/actions/#{controller}/#{action}.rb`")
+        end
+      end
+
+      context "with negative answer for overwrite question" do
+        it "raises error" do
+          expect {
+            within_application_directory do
+              generate_action
+            end
+          }.to raise_error(Hanami::CLI::FileAlreadyExistsError, "Cannot overwrite existing file: `app/actions/#{controller}/#{action}.rb`")
+        end
       end
     end
 
@@ -57,12 +72,26 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Action, :app do
         end
       end
 
-      it "raises error" do
-        expect {
+      context "with positive answer for overwrite question" do
+        let(:input) { StringIO.new("y\n")}
+
+        it "overwrites file" do
           within_application_directory do
             generate_action
+
+            expect(output).to include("Updated app/views/#{controller}/#{action}.rb")
           end
-        }.to raise_error(Hanami::CLI::FileAlreadyExistsError, "Cannot overwrite existing file: `app/views/#{controller}/#{action}.rb`")
+        end
+      end
+
+      context "with negative answer for overwrite question" do
+        it "raises error" do
+          expect {
+            within_application_directory do
+              generate_action
+            end
+          }.to raise_error(Hanami::CLI::FileAlreadyExistsError, "Cannot overwrite existing file: `app/views/#{controller}/#{action}.rb`")
+        end
       end
     end
 
@@ -73,12 +102,26 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Action, :app do
         end
       end
 
-      it "raises error" do
-        expect {
+      context "with positive answer for overwrite question" do
+        let(:input) { StringIO.new("yes\n")}
+
+        it "overwrites file" do
           within_application_directory do
             generate_action
+
+            expect(output).to include("Updated app/templates/#{controller}/#{action}.html.erb")
           end
-        }.to raise_error(Hanami::CLI::FileAlreadyExistsError, "Cannot overwrite existing file: `app/templates/#{controller}/#{action}.html.erb`")
+        end
+      end
+
+      context "with negative answer for overwrite question" do
+        it "raises error" do
+          expect {
+            within_application_directory do
+              generate_action
+            end
+          }.to raise_error(Hanami::CLI::FileAlreadyExistsError, "Cannot overwrite existing file: `app/templates/#{controller}/#{action}.html.erb`")
+        end
       end
     end
   end

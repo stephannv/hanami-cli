@@ -1,31 +1,15 @@
 # frozen_string_literal: true
 
-RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_integration do
-  subject { described_class.new(inflector: inflector, out: out) }
+RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, :app do
+  subject { described_class.new(fs: fs, inflector: inflector, out: out) }
 
-  let(:inflector) { Dry::Inflector.new }
-
+  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out, input: input) }
   let(:out) { StringIO.new }
+  let(:input) { StringIO.new }
+  let(:inflector) { Dry::Inflector.new }
+  let(:app) { Hanami.app.namespace }
+
   def output = out.string
-
-  before do
-    with_directory(@dir = make_tmp_directory) do
-      write "config/app.rb", <<~RUBY
-        module TestApp
-          class App < Hanami::App
-          end
-        end
-      RUBY
-
-      write "app/relations/.keep", ""
-
-      write "slices/main/.keep", ""
-
-      require "hanami/setup"
-    end
-
-    Dir.chdir(@dir)
-  end
 
   context "generating for app" do
     it "generates a relation" do
@@ -34,16 +18,16 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
       relation_file = <<~RUBY
         # frozen_string_literal: true
 
-        module TestApp
+        module Test
           module Relations
-            class Books < TestApp::DB::Relation
+            class Books < Test::DB::Relation
               schema :books, infer: true
             end
           end
         end
       RUBY
 
-      expect(Hanami.app.root.join("app/relations/books.rb").read).to eq relation_file
+      expect(fs.read("app/relations/books.rb")).to eq relation_file
       expect(output).to include("Created app/relations/books.rb")
     end
 
@@ -53,10 +37,10 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
       relation_file = <<~RUBY
         # frozen_string_literal: true
 
-        module TestApp
+        module Test
           module Relations
             module Books
-              class Drafts < TestApp::DB::Relation
+              class Drafts < Test::DB::Relation
                 schema :drafts, infer: true
               end
             end
@@ -64,7 +48,7 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
         end
       RUBY
 
-      expect(Hanami.app.root.join("app/relations/books/drafts.rb").read).to eq(relation_file)
+      expect(fs.read("app/relations/books/drafts.rb")).to eq(relation_file)
       expect(output).to include("Created app/relations/books/drafts.rb")
     end
 
@@ -74,10 +58,10 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
       relation_file = <<~RUBY
         # frozen_string_literal: true
 
-        module TestApp
+        module Test
           module Relations
             module Books
-              class PublishedBooks < TestApp::DB::Relation
+              class PublishedBooks < Test::DB::Relation
                 schema :published_books, infer: true
               end
             end
@@ -85,13 +69,15 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
         end
       RUBY
 
-      expect(Hanami.app.root.join("app/relations/books/published_books.rb").read).to eq(relation_file)
+      expect(fs.read("app/relations/books/published_books.rb")).to eq(relation_file)
       expect(output).to include("Created app/relations/books/published_books.rb")
     end
 
     it "deletes the redundant .keep file" do
+      fs.write "app/relations/.keep", ""
+
       expect { subject.call(name: "books") }
-        .to change { Hanami.app.root.join("app/relations/.keep").file? }
+        .to change { fs.exist?("app/relations/.keep") }
         .to false
     end
 
@@ -101,9 +87,9 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
       relation_file = <<~RUBY
         # frozen_string_literal: true
 
-        module TestApp
+        module Test
           module Relations
-            class Books < TestApp::DB::Relation
+            class Books < Test::DB::Relation
               gateway :extra
               schema :books, infer: true
             end
@@ -111,18 +97,30 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
         end
       RUBY
 
-      expect(Hanami.app.root.join("app/relations/books.rb").read).to eq relation_file
+      expect(fs.read("app/relations/books.rb")).to eq relation_file
       expect(output).to include("Created app/relations/books.rb")
     end
 
     context "with existing file" do
       before do
-        write "app/relations/books.rb", "existing content"
+        fs.write "app/relations/books.rb", "existing content"
       end
 
-      it "raises error" do
-        expect { subject.call(name: "books") }
-          .to raise_error(Hanami::CLI::FileAlreadyExistsError)
+      context "with positive answer for overwrite question" do
+        let(:input) { StringIO.new("y\n")}
+
+        it "overwrites file" do
+          subject.call(name: "books")
+
+          expect(output).to include("Updated app/relations/books.rb")
+        end
+      end
+
+      context "with negative answer for overwrite question" do
+        it "raises error" do
+          expect { subject.call(name: "books") }
+            .to raise_error(Hanami::CLI::FileAlreadyExistsError)
+        end
       end
     end
   end
@@ -143,7 +141,7 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
         end
       RUBY
 
-      expect(Hanami.app.root.join("slices/main/relations/books.rb").read).to eq(relation_file)
+      expect(fs.read("slices/main/relations/books.rb")).to eq(relation_file)
       expect(output).to include("Created slices/main/relations/books.rb")
     end
 
@@ -164,7 +162,7 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
         end
       RUBY
 
-      expect(Hanami.app.root.join("slices/main/relations/book/drafts.rb").read).to eq(relation_file)
+      expect(fs.read("slices/main/relations/book/drafts.rb")).to eq(relation_file)
       expect(output).to include("Created slices/main/relations/book/drafts.rb")
     end
 
@@ -186,18 +184,38 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Relation, "#call", :app_int
         end
       RUBY
 
-      expect(Hanami.app.root.join("slices/main/relations/book/drafts.rb").read).to eq(relation_file)
+      expect(fs.read("slices/main/relations/book/drafts.rb")).to eq(relation_file)
       expect(output).to include("Created slices/main/relations/book/drafts.rb")
+    end
+
+    it "deletes the redundant .keep file" do
+      fs.write "slices/main/.keep", ""
+
+      expect { subject.call(name: "books", slice: "main") }
+        .to change { fs.exist?("slices/main/.keep") }
+        .to false
     end
 
     context "with existing file" do
       before do
-        write "slices/main/relations/books.rb", "existing content"
+        fs.write "slices/main/relations/books.rb", "existing content"
       end
 
-      it "raises error" do
-        expect { subject.call(name: "books", slice: "main") }
-          .to raise_error(Hanami::CLI::FileAlreadyExistsError)
+      context "with positive answer for overwrite question" do
+        let(:input) { StringIO.new("y\n")}
+
+        it "overwrites file" do
+          subject.call(name: "books", slice: "main")
+
+          expect(output).to include("Updated slices/main/relations/books.rb")
+        end
+      end
+
+      context "with negative answer for overwrite question" do
+        it "raises error" do
+          expect { subject.call(name: "books", slice: "main") }
+            .to raise_error(Hanami::CLI::FileAlreadyExistsError)
+        end
       end
     end
   end

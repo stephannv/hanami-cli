@@ -5,10 +5,11 @@ require "hanami"
 RSpec.describe Hanami::CLI::Commands::App::Generate::Migration, :app do
   subject { described_class.new(fs: fs, inflector: inflector) }
 
-  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out) }
+  let(:fs) { Hanami::CLI::Files.new(memory: true, out: out, input: input) }
   let(:inflector) { Dry::Inflector.new }
 
   let(:out) { StringIO.new }
+  let(:input) { StringIO.new }
 
   def output
     out.string.strip
@@ -70,10 +71,22 @@ RSpec.describe Hanami::CLI::Commands::App::Generate::Migration, :app do
         fs.write("config/db/migrate/20240713140600_create_posts.rb", "existing content")
       end
 
-      it "raises error" do
-        expect {
+      context "with positive answer for overwrite question" do
+        let(:input) { StringIO.new("y\n")}
+
+        it "overwrites file" do
           subject.call(name: "create_posts")
-        }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+
+          expect(output).to include("Updated config/db/migrate/20240713140600_create_posts.rb")
+        end
+      end
+
+      context "with negative answer for overwrite question" do
+        it "raises error" do
+          expect {
+            subject.call(name: "create_posts")
+          }.to raise_error(Hanami::CLI::FileAlreadyExistsError)
+        end
       end
     end
   end
